@@ -36,65 +36,65 @@ setup(name='donkeycar',
               'donkey=donkeycar.management.base:execute_from_command_line',
           ],
       },
-      install_requires=[
-          'numpy',
-          'pillow',
-          'docopt',
-          'tornado',
-          'requests',
-          'h5py',
-          'PrettyTable',
-          'paho-mqtt',
-          "simple_pid",
-          'progress',
-          'typing_extensions',
-          'pyfiglet',
-          'psutil',
-          "pynmea2",
-          'pyserial',
-          "utm",
-      ],
-      extras_require={
-          'pi': [
-              'picamera',
-              'Adafruit_PCA9685',
-              'adafruit-circuitpython-lis3dh',
-              'adafruit-circuitpython-ssd1306',
-              'adafruit-circuitpython-rplidar',
-              'RPi.GPIO',
-              'imgaug'
-          ],
-          'nano': [
-              'Adafruit_PCA9685',
-              'adafruit-circuitpython-lis3dh',
-              'adafruit-circuitpython-ssd1306',
-              'adafruit-circuitpython-rplidar',
-              'Jetson.GPIO',
-          ],
-          'pc': [
-              'matplotlib',
-              'kivy',
-              'pandas',
-              'pyyaml',
-              'plotly',
-              'imgaug'
-          ],
-          'dev': [
-              'pytest',
-              'pytest-cov',
-              'responses',
-              'mypy'
-          ],
-          'ci': ['codecov'],
-          'tf': ['tensorflow==2.2.0'],
-          'torch': [
-              'pytorch>=1.7.1',
-              'torchvision',
-              'torchaudio',
-              'fastai'
-          ],
-          'mm1': ['pyserial']
-      },
+      # install_requires=[
+      #     'numpy',
+      #     'pillow',
+      #     'docopt',
+      #     'tornado',
+      #     'requests',
+      #     'h5py',
+      #     'PrettyTable',
+      #     'paho-mqtt',
+      #     "simple_pid",
+      #     'progress',
+      #     'typing_extensions',
+      #     'pyfiglet',
+      #     'psutil',
+      #     "pynmea2",
+      #     'pyserial',
+      #     "utm",
+      # ],
+      # extras_require={
+      #     'pi': [
+      #         'picamera',
+      #         'Adafruit_PCA9685',
+      #         'adafruit-circuitpython-lis3dh',
+      #         'adafruit-circuitpython-ssd1306',
+      #         'adafruit-circuitpython-rplidar',
+      #         'RPi.GPIO',
+      #         'imgaug'
+      #     ],
+      #     'nano': [
+      #         'Adafruit_PCA9685',
+      #         'adafruit-circuitpython-lis3dh',
+      #         'adafruit-circuitpython-ssd1306',
+      #         'adafruit-circuitpython-rplidar',
+      #         'Jetson.GPIO',
+      #     ],
+      #     'pc': [
+      #         'matplotlib',
+      #         'kivy',
+      #         'pandas',
+      #         'pyyaml',
+      #         'plotly',
+      #         'imgaug'
+      #     ],
+      #     'dev': [
+      #         'pytest',
+      #         'pytest-cov',
+      #         'responses',
+      #         'mypy'
+      #     ],
+      #     'ci': ['codecov'],
+      #     'tf': ['tensorflow==2.2.0'],
+      #     'torch': [
+      #         'pytorch>=1.7.1',
+      #         'torchvision',
+      #         'torchaudio',
+      #         'fastai'
+      #     ],
+      #     'mm1': ['pyserial']
+      # },
       package_data={
           'donkeycar': extra_files,
       },

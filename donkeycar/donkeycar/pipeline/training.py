@@ -91,7 +91,7 @@ def get_model_train_details(database: PilotDatabase, model: str = None) \
 
 
 def train(cfg: Config, tub_paths: str, model: str = None,
-          model_type: str = None, transfer: str = None, comment: str = None) \
+          model_type: str = None, transfer: str = None, comment: str = None, continue_train: bool = False) \
         -> tf.keras.callbacks.History:
     """
     Train the model
@@ -103,7 +103,11 @@ def train(cfg: Config, tub_paths: str, model: str = None,
         get_model_train_details(database, model)
 
     base_path = os.path.splitext(model_path)[0]
-    kl = get_model_by_type(model_type, cfg)
+    kl = get_model_by_type(model_type, cfg, continue_train)
+    if continue_train:
+        # kl.interpreter.set_model(kl)
+        # kl.load(model_path)
+        kl.load_weights(model_path)
     if transfer:
         kl.load(transfer)
     if cfg.PRINT_MODEL_SUMMARY:

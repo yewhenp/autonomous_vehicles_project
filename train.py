@@ -5,7 +5,7 @@ Basic usage should feel familiar: train.py --tubs data/ --model models/mypilot.h
 
 Usage:
     train.py [--tubs=tubs] (--model=<model>)
-    [--type=(linear|inferred|tensorrt_linear|tflite_linear)]
+    [--type=(linear|inferred|tensorrt_linear|tflite_linear)] [--continue-train=(true|false)]
     [--comment=<comment>]
 
 Options:
@@ -13,6 +13,8 @@ Options:
 """
 
 from docopt import docopt
+
+
 import donkeycar as dk
 from donkeycar.pipeline.training import train
 
@@ -24,7 +26,8 @@ def main():
     model = args['--model']
     model_type = args['--type']
     comment = args['--comment']
-    train(cfg, tubs, model, model_type, comment)
+    continue_train = args['--continue-train'] == "true"
+    train(cfg, tubs, model, model_type, comment, continue_train=continue_train)
 
 
 if __name__ == "__main__":

@@ -159,6 +159,8 @@ class KerasInterpreter(Interpreter):
         return self.invoke(input_dict)
 
     def load(self, model_path: str) -> None:
+        # logger.info(f'Loading model {model_path}')
+        # self.model = keras.models.load_model(model_path, compile=False)
         logger.info(f'Loading model {model_path}')
         self.model = keras.models.load_model(model_path, compile=False)
 

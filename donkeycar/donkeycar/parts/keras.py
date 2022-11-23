@@ -8,7 +8,7 @@ include one or more models to help direct the vehicles motion.
 
 """
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 from abc import ABC, abstractmethod
 from collections import deque
@@ -73,6 +73,9 @@ class KerasPilot(ABC):
     def load(self, model_path: str) -> None:
         logger.info(f'Loading model {model_path}')
         self.interpreter.load(model_path)
+
+    def set_continue_train(self):
+        self.continue_train = True
 
     def load_weights(self, model_path: str, by_name: bool = True) -> None:
         self.interpreter.load_weights(model_path, by_name=by_name)
@@ -388,9 +391,11 @@ class LinearWithStops(KerasPilot):
     def __init__(self,
                  interpreter: Interpreter = KerasInterpreter(),
                  input_shape: Tuple[int, ...] = (120, 160, 3),
-                 num_outputs: int = 2):
+                 num_outputs: int = 2, continue_train: bool = False):
         self.num_outputs = num_outputs
+        self.continue_train = continue_train
         super().__init__(interpreter, input_shape)
+        self.handle_freeze()
 
     def create_model(self):
         drop = 0.2
@@ -406,9 +411,9 @@ class LinearWithStops(KerasPilot):
 
         # start stop mechanism (conv layers)
         stop_out = conv2d(64, 3, 1, "stop_out_1")(x)
-        stop_out = Dropout(drop)(stop_out)
+        stop_out = Dropout(drop, name="stop_drop_1")(stop_out)
         stop_out = conv2d(64, 3, 1, "stop_out_2")(stop_out)
-        stop_out = Dropout(drop)(stop_out)
+        stop_out = Dropout(drop, name="stop_drop_2")(stop_out)
         stop_out = Flatten(name='flattened_stop')(stop_out)
         # finish stop mechanism (conv layers)
 
@@ -425,23 +430,43 @@ class LinearWithStops(KerasPilot):
 
         # start stop mechanism (linear layers)
         stop_out = Dense(30, activation='relu', name='dense_1_stop_out')(stop_out)
-        stop_out = Dropout(drop)(stop_out)
+        stop_out = Dropout(drop, name="stop_drop_3")(stop_out)
         stop_out = Dense(8, activation='relu', name='dense_2_stop_out')(stop_out)
-        stop_out = Dropout(drop)(stop_out)
+        stop_out = Dropout(drop, name="stop_drop_4")(stop_out)
         # finish stop mechanism (linear layers)
 
         outputs = []
         for i in range(self.num_outputs):
-            outputs.append(Dense(1, activation='linear', name='n_outputs' + str(i))(x))
+            fin_lr = Dense(1, activation='linear', name='n_outputs' + str(i))(x)
+            outputs.append(fin_lr)
 
         # stop mechanism (final layers)
-        outputs.append(Dense(1, activation='linear', name='should_stop')(stop_out))
+        fin_stop_lr = Dense(1, activation='linear', name='should_stop')(stop_out)
+        outputs.append(fin_stop_lr)
 
         model = Model(inputs=[img_in], outputs=outputs, name='linear_with_stops')
         return model
 
+    def handle_freeze(self):
+        print(f"handle_freeze self.continue_train = {self.continue_train}")
+        for i in range(len(self.interpreter.model.layers)):
+            if self.continue_train:
+                if "stop" not in self.interpreter.model.layers[i].name:
+                    self.interpreter.model.layers[i].trainable = False
+                else:
+                    self.interpreter.model.layers[i].trainable = True
+            else:
+                if "stop" not in self.interpreter.model.layers[i].name:
+                    self.interpreter.model.layers[i].trainable = True
+                else:
+                    self.interpreter.model.layers[i].trainable = False
+
     def compile(self):
         self.interpreter.compile(optimizer=self.optimizer, loss='mse')
+
+    def load_weights(self, model_path: str, by_name: bool = True) -> None:
+        super().load_weights(model_path, by_name)
+        self.handle_freeze()
 
     def interpreter_to_output(self, interpreter_out):
         steering = interpreter_out[0]

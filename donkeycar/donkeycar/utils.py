@@ -457,7 +457,7 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-def get_model_by_type(model_type: str, cfg: 'Config') -> Union['KerasPilot', 'FastAiPilot']:
+def get_model_by_type(model_type: str, cfg: 'Config', continue_train: bool = False) -> Union['KerasPilot', 'FastAiPilot']:
     '''
     given the string model_type and the configuration settings in cfg
     create a Keras model and return it.
@@ -492,7 +492,7 @@ def get_model_by_type(model_type: str, cfg: 'Config') -> Union['KerasPilot', 'Fa
     if used_model_type == "linear":
         kl = KerasLinear(interpreter=interpreter, input_shape=input_shape)
     elif used_model_type == "linear_with_stops":
-        kl = LinearWithStops(interpreter=interpreter, input_shape=input_shape)
+        kl = LinearWithStops(interpreter=interpreter, input_shape=input_shape, continue_train=continue_train)
     elif used_model_type == "pilotnet":
         kl = PilotNet(interpreter=interpreter, input_shape=input_shape)
     elif used_model_type == "categorical":
