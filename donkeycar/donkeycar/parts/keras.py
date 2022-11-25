@@ -429,9 +429,9 @@ class LinearWithStops(KerasPilot):
         x = Dropout(drop)(x)
 
         # start stop mechanism (linear layers)
-        stop_out = Dense(30, activation='relu', name='dense_1_stop_out')(stop_out)
+        stop_out = Dense(100, activation='relu', name='dense_1_stop_out')(stop_out)  # 30
         stop_out = Dropout(drop, name="stop_drop_3")(stop_out)
-        stop_out = Dense(8, activation='relu', name='dense_2_stop_out')(stop_out)
+        stop_out = Dense(50, activation='relu', name='dense_2_stop_out')(stop_out)  # 8
         stop_out = Dropout(drop, name="stop_drop_4")(stop_out)
         # finish stop mechanism (linear layers)
 
@@ -501,6 +501,146 @@ class LinearWithStops(KerasPilot):
                   {'n_outputs0': tf.TensorShape([]),
                    'n_outputs1': tf.TensorShape([]),
                    'should_stop': tf.TensorShape([])})
+        return shapes
+
+
+class LinearWithStopsWide(KerasPilot):
+    def __init__(self,
+                 interpreter: Interpreter = KerasInterpreter(),
+                 input_shape: Tuple[int, ...] = (120, 160, 3),
+                 num_outputs: int = 2, continue_train: bool = False):
+        self.num_outputs = num_outputs
+        self.continue_train = continue_train
+        super().__init__(interpreter, input_shape)
+        self.handle_freeze()
+
+    def create_model(self):
+        drop = 0.2
+        img_in = Input(shape=self.input_shape, name='img_in')
+
+        x = img_in
+        x = conv2d(24, 5, 2, 1)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(32, 5, 2, 2)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(64, 5, 2, 3)(x)
+        x = Dropout(drop)(x)
+
+        # start stop mechanism (conv layers)
+        stop_out = conv2d(64, 3, 1, "stop_out_1")(x)
+        stop_out = Dropout(drop, name="stop_drop_1")(stop_out)
+        stop_out = conv2d(64, 3, 1, "stop_out_2")(stop_out)
+        stop_out = Dropout(drop, name="stop_drop_2")(stop_out)
+        stop_out = Flatten(name='flattened_stop')(stop_out)
+        # finish stop mechanism (conv layers)
+
+        x = conv2d(64, 3, 1, 4)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(64, 3, 1, 5)(x)
+        x = Dropout(drop)(x)
+        x = Flatten(name='flattened')(x)
+
+        x = Dense(100, activation='relu', name='dense_1')(x)
+        x = Dropout(drop)(x)
+        x = Dense(50, activation='relu', name='dense_2')(x)
+        x = Dropout(drop)(x)
+
+        # start stop mechanism (linear layers)
+        stop_out = Dense(100, activation='relu', name='dense_1_stop_out')(stop_out)  # 30
+        stop_out = Dropout(drop, name="stop_drop_3")(stop_out)
+        stop_out = Dense(50, activation='relu', name='dense_2_stop_out')(stop_out)  # 8
+        stop_out = Dropout(drop, name="stop_drop_4")(stop_out)
+        # finish stop mechanism (linear layers)
+
+        outputs = []
+        for i in range(self.num_outputs):
+            fin_lr = Dense(1, activation='linear', name='n_outputs' + str(i))(x)
+            outputs.append(fin_lr)
+
+        # stop mechanism (final layers)
+        fin_stop_lr = Dense(1, activation='linear', name='stop_sign_stop')(stop_out)
+        outputs.append(fin_stop_lr)
+        fin_stop_lr = Dense(1, activation='linear', name='pedestrian_stop')(stop_out)
+        outputs.append(fin_stop_lr)
+        fin_stop_lr = Dense(1, activation='linear', name='right_car_stop')(stop_out)
+        outputs.append(fin_stop_lr)
+
+        model = Model(inputs=[img_in], outputs=outputs, name='linear_with_stops')
+        return model
+
+    def handle_freeze(self):
+        print(f"handle_freeze self.continue_train = {self.continue_train}")
+        for i in range(len(self.interpreter.model.layers)):
+            if self.continue_train:
+                if "stop" not in self.interpreter.model.layers[i].name:
+                    self.interpreter.model.layers[i].trainable = False
+                else:
+                    self.interpreter.model.layers[i].trainable = True
+            else:
+                if "stop" not in self.interpreter.model.layers[i].name:
+                    self.interpreter.model.layers[i].trainable = True
+                else:
+                    self.interpreter.model.layers[i].trainable = False
+
+    def compile(self):
+        self.interpreter.compile(optimizer=self.optimizer, loss='mse')
+
+    def load_weights(self, model_path: str, by_name: bool = True) -> None:
+        super().load_weights(model_path, by_name)
+        self.handle_freeze()
+
+    def interpreter_to_output(self, interpreter_out):
+        steering = interpreter_out[0]
+        stop_sign = interpreter_out[2]
+        pedestrian = interpreter_out[3]
+        right_side_car = interpreter_out[4]
+        if stop_sign[0] > 0.5 or pedestrian[0] > 0.5 or right_side_car[0] > 0.5:
+            throttle = [0.0]
+        else:
+            throttle = [0.75]
+        print("steering = {} throttle = {} stop_sign = {} pedestrian = {} right_side_car = {}".format(steering[0],
+                                                                                                      throttle[0],
+                                                                                                      stop_sign[0],
+                                                                                                      pedestrian[0],
+                                                                                                      right_side_car[0],
+                                                                                                      ))
+        return steering[0], throttle[0]
+
+    def y_transform(self, record: Union[TubRecord, List[TubRecord]]) -> XY:
+        assert isinstance(record, TubRecord), 'TubRecord expected'
+        angle: float = record.underlying['user/angle']
+        throttle: float = record.underlying['user/throttle']
+        if 'user/stop_sign' in record.underlying.keys():
+            stop_sign: int = record.underlying['user/stop_sign']
+        else:
+            stop_sign: int = 0
+        if 'user/pedestrian' in record.underlying.keys():
+            pedestrian: int = record.underlying['user/pedestrian']
+        else:
+            pedestrian: int = 0
+        if 'user/right_side_car' in record.underlying.keys():
+            right_side_car: int = record.underlying['user/right_side_car']
+        else:
+            right_side_car: int = 0
+        return angle, throttle, stop_sign, pedestrian, right_side_car
+
+    def y_translate(self, y: XY) -> Dict[str, Union[float, List[float]]]:
+        assert isinstance(y, tuple), 'Expected tuple'
+        angle, throttle, stop_sign, pedestrian, right_side_car = y
+        return {'n_outputs0': angle, 'n_outputs1': throttle, 'stop_sign_stop': stop_sign,
+                'pedestrian_stop': pedestrian, 'right_car_stop': right_side_car}
+
+    def output_shapes(self):
+        # need to cut off None from [None, 120, 160, 3] tensor shape
+        img_shape = self.get_input_shapes()[0][1:]
+        shapes = ({'img_in': tf.TensorShape(img_shape)},
+                  {
+                      'n_outputs0': tf.TensorShape([]),
+                      'n_outputs1': tf.TensorShape([]),
+                      'stop_sign_stop': tf.TensorShape([]),
+                      'pedestrian_stop': tf.TensorShape([]),
+                      'right_car_stop': tf.TensorShape([]),
+                  })
         return shapes
 
 

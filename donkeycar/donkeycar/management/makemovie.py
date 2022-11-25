@@ -1,3 +1,6 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 import moviepy.editor as mpy
 from tensorflow.python.keras import activations
 from tensorflow.python.keras import backend as K

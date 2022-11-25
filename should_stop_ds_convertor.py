@@ -3,11 +3,11 @@ import os
 import tqdm
 
 
-def main(tub_path: str):
+def main(tub_path: str, inserter="user/should_stop"):
     manifest_path = tub_path + "/manifest.json"
     with open(manifest_path) as f:
         lines = f.readlines()
-    lines[0] = lines[0][:-2] + ", \"user/should_stop\"]\n"
+    lines[0] = lines[0][:-2] + f", \"{inserter}\"]\n"
     lines[1] = lines[1][:-2] + ", \"int\"]\n"
     with open(manifest_path, "w") as f:
         f.writelines(lines)
@@ -18,12 +18,15 @@ def main(tub_path: str):
             with open(total_path) as f:
                 lines = f.readlines()
             for i in range(len(lines)):
-                lines[i] = lines[i][:-2] + ", \"user/should_stop\": 1}\n"
+                lines[i] = lines[i][:-2] + f", \"{inserter}\": 1" + "}\n"
             with open(total_path, "w") as f:
                 f.writelines(lines)
 
 
 if __name__ == '__main__':
-    main("data/pedestrian")
-    main("data/pedestrian_mirrored")
-    main("data/right_side_car")
+    # main("data/pedestrian", inserter="user/pedestrian")
+    # main("data/pedestrian_mirrored", inserter="user/pedestrian")
+    # main("data/right_side_car", inserter="user/right_side_car")
+    # main("data/stop_sign", inserter="user/stop_sign")
+    main("data/pedestrian_2", inserter="user/pedestrian")
+    main("data/right_side_car_2", inserter="user/right_side_car")
