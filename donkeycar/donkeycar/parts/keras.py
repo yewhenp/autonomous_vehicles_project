@@ -390,6 +390,57 @@ class KerasLinear(KerasPilot):
                    'n_outputs1': tf.TensorShape([])})
         return shapes
 
+class LinearWithStopsWideCut(LinearWithStops):
+    def create_model(self):
+        drop = 0.2
+        img_in = Input(shape=self.input_shape, name='img_in')
+
+        x = img_in
+        x = tf.keras.layers.Cropping2D(cropping=((40, 0), (0, 0)))(x)
+        x = conv2d(24, 5, 2, 1)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(32, 5, 2, 2)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(64, 5, 2, 3)(x)
+        x = Dropout(drop)(x)
+
+        # start stop mechanism (conv layers)
+        stop_out = conv2d(64, 3, 1, "stop_out_1")(x)
+        stop_out = Dropout(drop, name="stop_drop_1")(stop_out)
+        stop_out = conv2d(64, 3, 1, "stop_out_2")(stop_out)
+        stop_out = Dropout(drop, name="stop_drop_2")(stop_out)
+        stop_out = Flatten(name='flattened_stop')(stop_out)
+        # finish stop mechanism (conv layers)
+
+        x = conv2d(64, 3, 1, 4)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(64, 3, 1, 5)(x)
+        x = Dropout(drop)(x)
+        x = Flatten(name='flattened')(x)
+
+        x = Dense(100, activation='relu', name='dense_1')(x)
+        x = Dropout(drop)(x)
+        x = Dense(50, activation='relu', name='dense_2')(x)
+        x = Dropout(drop)(x)
+
+        # start stop mechanism (linear layers)
+        stop_out = Dense(100, activation='relu', name='dense_1_stop_out')(stop_out)  # 30
+        stop_out = Dropout(drop, name="stop_drop_3")(stop_out)
+        stop_out = Dense(50, activation='relu', name='dense_2_stop_out')(stop_out)  # 8
+        stop_out = Dropout(drop, name="stop_drop_4")(stop_out)
+        # finish stop mechanism (linear layers)
+
+        outputs = []
+        for i in range(self.num_outputs):
+            fin_lr = Dense(1, activation='linear', name='n_outputs' + str(i))(x)
+            outputs.append(fin_lr)
+
+        # stop mechanism (final layers)
+        fin_stop_lr = Dense(1, activation='linear', name='should_stop')(stop_out)
+        outputs.append(fin_stop_lr)
+
+        model = Model(inputs=[img_in], outputs=outputs, name='linear_with_stops')
+        return model
 
 class LinearWithStops(KerasPilot):
     def __init__(self,

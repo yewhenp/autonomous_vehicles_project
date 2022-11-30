@@ -32,5 +32,7 @@ def main(tub_path: str):
 
 
 if __name__ == '__main__':
-    main("data/pedestrian_5")
-    # main("data/basic_3")
+    main("data/no_car_or_pedestrian")
+    main("data/base_3")
+    main("data/pedetstrian3")
+
