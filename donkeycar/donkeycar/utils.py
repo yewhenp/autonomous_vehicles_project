@@ -464,7 +464,8 @@ def get_model_by_type(model_type: str, cfg: 'Config', continue_train: bool = Fal
     '''
     from donkeycar.parts.keras import KerasCategorical, KerasLinear, \
         KerasInferred, KerasIMU, KerasMemory, KerasBehavioral, KerasLocalizer, \
-        KerasLSTM, Keras3D_CNN, PilotNet, LinearWithStops, LinearWithStopsWide
+        KerasLSTM, Keras3D_CNN, PilotNet, LinearWithStops, LinearWithStopsWide, LinearWithStopsWideCut, \
+        LinearWithStopsWideCutSeparate, LinearWithStopsWideCutSeparateV2
     from donkeycar.parts.interpreter import KerasInterpreter, TfLite, TensorRT, \
         FastAIInterpreter
 
@@ -495,6 +496,12 @@ def get_model_by_type(model_type: str, cfg: 'Config', continue_train: bool = Fal
         kl = LinearWithStops(interpreter=interpreter, input_shape=input_shape, continue_train=continue_train)
     elif used_model_type == "linear_with_stops_wide":
         kl = LinearWithStopsWide(interpreter=interpreter, input_shape=input_shape, continue_train=continue_train)
+    elif used_model_type == "linear_with_stops_wide_cut":
+        kl = LinearWithStopsWideCut(interpreter=interpreter, input_shape=input_shape, continue_train=continue_train)
+    elif used_model_type == "linear_with_stops_wide_cut_separate":
+        kl = LinearWithStopsWideCutSeparate(interpreter=interpreter, input_shape=input_shape, continue_train=continue_train)
+    elif used_model_type == "linear_with_stops_wide_cut_separate_v2":
+        kl = LinearWithStopsWideCutSeparateV2(interpreter=interpreter, input_shape=input_shape, continue_train=continue_train)
     elif used_model_type == "pilotnet":
         kl = PilotNet(interpreter=interpreter, input_shape=input_shape)
     elif used_model_type == "categorical":

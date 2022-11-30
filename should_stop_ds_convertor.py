@@ -28,5 +28,6 @@ if __name__ == '__main__':
     # main("data/pedestrian_mirrored", inserter="user/pedestrian")
     # main("data/right_side_car", inserter="user/right_side_car")
     # main("data/stop_sign", inserter="user/stop_sign")
-    main("data/pedestrian_2", inserter="user/pedestrian")
-    main("data/right_side_car_2", inserter="user/right_side_car")
+    # main("data/pedestrian_5", inserter="user/pedestrian")
+    # main("data/right_side_car_4", inserter="user/right_side_car")
+    main("data/stop_sign_2", inserter="user/stop_sign")
