@@ -2,6 +2,8 @@
 
 _**Main contributors: Yevhen Pankevych, Volodymyr Savchuk**_
 
+![our team](https://drive.google.com/file/d/1fl0ie_oFiCodlrekRoJxT_aTHF7qxw9C/view?usp=sharing)
+
 ## Introduction 
 
 This blogpost is a project report from the Autonomous vehicles project course, and the actual participation 
@@ -79,4 +81,4 @@ In order to speed up the work process and to be able to train several model vari
 
 For solving the problem of stopping before stopping conditions we introduced two-step training. In the first stage, we train only the part of the model that is responsible for turning angles and use the data that contains only the driving process. At this point, we freeze the parts of the model corresponding to the stopping condition. After this training, we retrain the model with the same weights, but freeze the driving part of the model, instead updating the weights only for the stop models, using data with different stop conditions. In this way, we get a trained movement model and stop models.
 
-#### Results:
+## Results:
