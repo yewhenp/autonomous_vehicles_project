@@ -2,7 +2,7 @@
 
 _**Main contributors: Yevhen Pankevych, Volodymyr Savchuk**_
 
-![our team](https://drive.google.com/file/d/1fl0ie_oFiCodlrekRoJxT_aTHF7qxw9C)
+![our team](https://drive.google.com/uc?export=view&id=1fl0ie_oFiCodlrekRoJxT_aTHF7qxw9C)
 
 ## Introduction 
 
