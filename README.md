@@ -2,7 +2,7 @@
 
 _**Main contributors: Yevhen Pankevych, Volodymyr Savchuk**_
 
-![our team](https://drive.google.com/uc?export=view&id=14lRhDjeZJtunslnXYlr14UnldNqiVQrR)
+![our team](https://drive.google.com/uc?export=view&id=1FjW0Ll2-wysLdldq7viJbHsSVT23fqmL)
 
 ## Introduction 
 
@@ -29,8 +29,10 @@ Actually, data collection took us 70% percent of time working on a project.
 In the first iteration, we collected a rather unbalanced dataset - there were many images with forward motion, and a certain number with motion to extreme rotation angles, and almost no images with intermediate values of rotation. As it turned out during training, when supplementing with data from intermediate values, the model began to work a little smoother and more stably. Therefore, the additional collection of datasets was aimed at diversifying the data.
 
 Sometimes we noticed that on some part of the track our car makes the mistake again and again. The simplest solution was to collect more data exactly on that place of the track. We trained the model again with additional data and it improved the performance in that particular place. We iterated dozens of times and it helped to collect a balanced dataset. I mean we really go through all the possible cases!
+
 ![our team](https://drive.google.com/uc?export=view&id=1kPFpac_R_7DYFNtVShpWP8mfrv2yIMHa)
- Okay last one is a joke)))
+
+Okay last one is a joke)))
 
 In addition to data for actual driving, we collected data for stops (pedestrians on the crosswalk, another car on the right, stop sign). We collected them without adjusting the angle of rotation of the wheels (just holding the machine in place by hand), so the steering data on these samples is invalid and may affect the behavior of the turning model.
 
