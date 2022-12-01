@@ -4,6 +4,8 @@ _**Main contributors: Yevhen Pankevych, Volodymyr Savchuk**_
 
 ![our team](https://drive.google.com/uc?export=view&id=1fl0ie_oFiCodlrekRoJxT_aTHF7qxw9C)
 
+![image](https://drive.google.com/uc?export=view&id=1913oZeBZPBNiUuk8gu3ZSbLBA2l_VQtG)
+
 ## Introduction 
 
 This blogpost is a project report from the Autonomous vehicles project course, and the actual participation 
