@@ -2,7 +2,7 @@
 
 _**Main contributors: Yevhen Pankevych, Volodymyr Savchuk**_
 
-![our team](https://drive.google.com/uc?export=view&id=1I-1pKCJ9ZUCGO2zQIjtubc8Pufu-miKH)
+![our team](https://drive.google.com/uc?export=view&id=1AoIYa4c0qFboLtzFwpxMU5LlCdcUz8eV)
 
 ## Introduction 
 
@@ -23,10 +23,14 @@ track avoiding the obstacles and without any stopping conditions. The next chall
 ## Data collection
 
 Actually, data collection took us 70% percent of time working on a project. 
+![our team](https://drive.google.com/uc?export=view&id=1RQce_b2NAUkD9WTauUBu81Z3jt93esJ9)
+![our team](https://drive.google.com/uc?export=view&id=1FGUofPGzIjRwJP3TCuvxKI9t_wW-ZUuK)
 
-In the first iteration, we collected a rather unbalanced dataset - there were many images with forward motion, and a certain number with motion to extreme rotation angles, and almost no images with intermediate values ​​of rotation. As it turned out during training, when supplementing with data from intermediate values, the model began to work a little smoother and more stably. Therefore, the additional collection of datasets was aimed at diversifying the data.
+In the first iteration, we collected a rather unbalanced dataset - there were many images with forward motion, and a certain number with motion to extreme rotation angles, and almost no images with intermediate values of rotation. As it turned out during training, when supplementing with data from intermediate values, the model began to work a little smoother and more stably. Therefore, the additional collection of datasets was aimed at diversifying the data.
 
-Sometimes we noticed that on some part of the track our car makes the mistake again and again. The simplest solution was to collect more data exactly on that place of the track. We trained the model again with additional data and it improved the performance in that particular place. We iterated dozens of times and it helped to collect quite a balanced dataset.
+Sometimes we noticed that on some part of the track our car makes the mistake again and again. The simplest solution was to collect more data exactly on that place of the track. We trained the model again with additional data and it improved the performance in that particular place. We iterated dozens of times and it helped to collect a balanced dataset. I mean we really go through all the possible cases!
+![our team](https://drive.google.com/uc?export=view&id=1kPFpac_R_7DYFNtVShpWP8mfrv2yIMHa)
+ Okay last one is a joke)))
 
 In addition to data for actual driving, we collected data for stops (pedestrians on the crosswalk, another car on the right, stop sign). We collected them without adjusting the angle of rotation of the wheels (just holding the machine in place by hand), so the steering data on these samples is invalid and may affect the behavior of the turning model.
 
@@ -43,30 +47,34 @@ Let's start with the first stage.
 
 The first iteration of the work was the use of built-in model architectures from the Donkey library. We worked with a linear model. The architecture of the model can be seen below.
 
-![model_pic]()
+![our team](https://drive.google.com/uc?export=view&id=1sDtR4qYvJ4_bACUYD3hufAK4r5M2o_hI)
 
 A slightly modified [PilotNet model](https://github.com/lhzlhz/PilotNet) was also tested. The architecture is shown below.
-![model_pic]()
+![our team](https://drive.google.com/uc?export=view&id=1FjW0Ll2-wysLdldq7viJbHsSVT23fqmL)
 
 As the tests showed, although the PilotNet performed on average faster than the linear model, the linear model gave more timely turns and less interference with obstacles. In addition, after converting to tflite format, the execution time of both models decreased and became quite similar, so it was decided to continue to use the linear model architecture as the model to control the turns.
 
 ### Stop models
 
 The second stage was the introduction of additional logic to recognize stop conditions. The first attempt was to simply add a branch after a few convolutional layers and introduce additional layers and one additional output that simply predicts whether to stop at the current moment. The architecture is shown below.
-![model_pic]()
+![our team](https://drive.google.com/uc?export=view&id=1_J7q17I9999dRoozSq4z7W5EvA5fcSqF)
+
+### Separate stop models for every stop conditions
 
 Previous models with introduced stop conditions had quite good results, but there were still a lot of mistakes before the crosswalk. For example, sometimes it stops, but there was no pedestrian on a crosswalk, same mistakes were for other stop conditions. We decided to introduce the new logic in building our model. Actually we have made four separate models. First predicts steering, second predicts the Stop Sign presence, third predicts Pedestrian presence on a crosswalk, fourth predicts Right Side Car presence. We created four models, but DonkeyCar perceives it still as the one model, because it could work only with one. Also we added a separate cropping layer to each of the models. For example: for the Right Side Car we added cropping only the right-bottom part of the image, for Stop Sign we didn’t add any cropping, for Pedestrian on a crosswalk we added only crop to the upper half of the image. This model performed a lot better than the previous, but there were still some mistakes according to the Pedestrian on a crosswalk stopping condition.
 
+![our team](https://drive.google.com/uc?export=view&id=1I-1pKCJ9ZUCGO2zQIjtubc8Pufu-miKH)
+
 ### Improved separate stop models
 We decided to add one more convolution layer and adjusted the crop of the “Pedestrian on a crosswalk” model. This worked well! Now the model stops correctly at all stopping conditions and drives smoothly on a track!
-![model_pic]()
+![our team](https://drive.google.com/uc?export=view&id=1xqpjrsOSi8iPTB2ehCgxMnDoca77RDDK)
 
 
 ## Training points
 
 ### GPU problems
 For training, we wanted to use the GPU installed in our laptop, an RTX 3060 Laptop, which is built on the Ampere architecture and uses CUDA 11 and cuDNN 8. However, during the training process, we encountered a strange problem. The training process itself was quite strange - the loss was too high and almost did not change (you can see in the graphs below).
-![training loss]()
+![our team](https://drive.google.com/uc?export=view&id=1AoIYa4c0qFboLtzFwpxMU5LlCdcUz8eV)
 After training, the model "froze" - when we tried to predict values ​​on any input data, it gave almost identical results. When we ran the trained model on the CPU, we got NaN instead of the results. We got the same NaN values when we ran the trained model on Raspberry.
 
 Then we tried to train the model on the CPU and the problem disappeared - the loss started to behave normally (see graph below) and real values started to appear on the CPU and Raspberry.
