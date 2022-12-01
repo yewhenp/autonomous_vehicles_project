@@ -1,8 +1,9 @@
 # self-driving-donkey-car
 
 _**Main contributors: Yevhen Pankevych, Volodymyr Savchuk**_
+![IMG_0892_11zon](https://user-images.githubusercontent.com/56469845/204942743-5209e196-49d0-4a67-8e27-e92aac59e632.png)
 
-![our team](https://drive.google.com/uc?export=view&id=170FCYegT7lIhLCY9gAZ-yseLx9AwX8hh)
+
 
 ## Introduction 
 
@@ -23,15 +24,13 @@ track avoiding the obstacles and without any stopping conditions. The next chall
 ## Data collection
 
 Actually, data collection took us 70% percent of time working on a project. 
-![our team](https://drive.google.com/uc?export=view&id=1RQce_b2NAUkD9WTauUBu81Z3jt93esJ9)
-![our team](https://drive.google.com/uc?export=view&id=1FGUofPGzIjRwJP3TCuvxKI9t_wW-ZUuK)
-
+![IMG_0868_11zon](https://user-images.githubusercontent.com/56469845/204942878-5e86f6eb-b8b6-450d-9bb6-880d23cb9634.png)
+![IMG_0865_11zon](https://user-images.githubusercontent.com/56469845/204942893-948a8531-8143-4526-84cd-7fe615125c14.png)
 In the first iteration, we collected a rather unbalanced dataset - there were many images with forward motion, and a certain number with motion to extreme rotation angles, and almost no images with intermediate values of rotation. As it turned out during training, when supplementing with data from intermediate values, the model began to work a little smoother and more stably. Therefore, the additional collection of datasets was aimed at diversifying the data.
 
 Sometimes we noticed that on some part of the track our car makes the mistake again and again. The simplest solution was to collect more data exactly on that place of the track. We trained the model again with additional data and it improved the performance in that particular place. We iterated dozens of times and it helped to collect a balanced dataset. I mean we really go through all the possible cases!
 
-![our team](https://drive.google.com/uc?export=view&id=1kPFpac_R_7DYFNtVShpWP8mfrv2yIMHa)
-
+![IMG_0879_11zon](https://user-images.githubusercontent.com/56469845/204942907-5877f83d-3517-4de6-9043-f178e7ca6edb.png)
 Okay last one is a joke)))
 
 In addition to data for actual driving, we collected data for stops (pedestrians on the crosswalk, another car on the right, stop sign). We collected them without adjusting the angle of rotation of the wheels (just holding the machine in place by hand), so the steering data on these samples is invalid and may affect the behavior of the turning model.
@@ -93,7 +92,7 @@ For solving the problem of stopping before stopping conditions we introduced two
 
 ## Results:
 
-![our team](https://drive.google.com/uc?export=view&id=1rn70NMrJyXOobju6J8Kay-3O6b_BoPDw)
+![our team](https://drive.google.com/file/d/1d9yG5tPl3bv6fO8Gf8YeWWMEOVZfkkrR/view?usp=sharing)
 ![our team](https://drive.google.com/uc?export=view&id=1sImHECWQAtlSLLNC9qKlnP73XsL5ruS4)
 ![our team](https://drive.google.com/uc?export=view&id=1sImHECWQAtlSLLNC9qKlnP73XsL5ruS4)
 ![our team](https://drive.google.com/uc?export=view&id=1sImHECWQAtlSLLNC9qKlnP73XsL5ruS4)
