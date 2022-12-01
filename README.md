@@ -3,6 +3,7 @@
 _**Main contributors: Yevhen Pankevych, Volodymyr Savchuk**_
 
 ![our team](https://drive.google.com/uc?export=view&id=1AoIYa4c0qFboLtzFwpxMU5LlCdcUz8eV)
+![our team](https://drive.google.com/file/d/1AoIYa4c0qFboLtzFwpxMU5LlCdcUz8eV/view?usp=sharing)
 
 ## Introduction 
 
