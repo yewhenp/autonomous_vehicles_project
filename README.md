@@ -92,9 +92,9 @@ For solving the problem of stopping before stopping conditions we introduced two
 
 ## Results:
 
-![Stop Sign One Direction](https://drive.google.com/file/d/1d9yG5tPl3bv6fO8Gf8YeWWMEOVZfkkrR/view?usp=sharing)
-![Stop Sign Opposite Direction](https://drive.google.com/file/d/1WjwqWQXFzXb_H83h1KCs5WmSLjcpooNP/view?usp=sharing)
-![Right Side Car](https://drive.google.com/file/d/1_67PnDQh4MBNoINuRF0GStAnFWP8zUZJ/view?usp=sharing)
-![Pedestrian + Left Side Car](https://drive.google.com/file/d/1tIgGxVGBcvRxKx16Cb20XLj2pQ7n4EjN/view?usp=sharing)
-![Pedestrian Opposite Direction](https://drive.google.com/file/d/1usGlsu0dj1t3P98rFtADU2WxV-SoUWGR/view?usp=sharing)
-![Just Following Track](https://drive.google.com/file/d/1r8IeQSGxHCGHfuOi6e6oSKZ1Ox_PXmbJ/view?usp=sharing)
+[Stop Sign One Direction](https://drive.google.com/file/d/1d9yG5tPl3bv6fO8Gf8YeWWMEOVZfkkrR/view?usp=sharing)
+[Stop Sign Opposite Direction](https://drive.google.com/file/d/1WjwqWQXFzXb_H83h1KCs5WmSLjcpooNP/view?usp=sharing)
+[Right Side Car](https://drive.google.com/file/d/1_67PnDQh4MBNoINuRF0GStAnFWP8zUZJ/view?usp=sharing)
+[Pedestrian + Left Side Car](https://drive.google.com/file/d/1tIgGxVGBcvRxKx16Cb20XLj2pQ7n4EjN/view?usp=sharing)
+[Pedestrian Opposite Direction](https://drive.google.com/file/d/1usGlsu0dj1t3P98rFtADU2WxV-SoUWGR/view?usp=sharing)
+[Just Following Track](https://drive.google.com/file/d/1r8IeQSGxHCGHfuOi6e6oSKZ1Ox_PXmbJ/view?usp=sharing)
