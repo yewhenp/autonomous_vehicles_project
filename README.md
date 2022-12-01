@@ -2,7 +2,7 @@
 
 _**Main contributors: Yevhen Pankevych, Volodymyr Savchuk**_
 
-![our team](https://drive.google.com/uc?export=view&id=1FjW0Ll2-wysLdldq7viJbHsSVT23fqmL)
+![our team](https://drive.google.com/uc?export=view&id=170FCYegT7lIhLCY9gAZ-yseLx9AwX8hh)
 
 ## Introduction 
 
@@ -76,11 +76,11 @@ We decided to add one more convolution layer and adjusted the crop of the “Ped
 
 ### GPU problems
 For training, we wanted to use the GPU installed in our laptop, an RTX 3060 Laptop, which is built on the Ampere architecture and uses CUDA 11 and cuDNN 8. However, during the training process, we encountered a strange problem. The training process itself was quite strange - the loss was too high and almost did not change (you can see in the graphs below).
-![our team](https://drive.google.com/uc?export=view&id=1AoIYa4c0qFboLtzFwpxMU5LlCdcUz8eV)
+![our team](https://drive.google.com/uc?export=view&id=17_ynJcmxcs-fhLSJVo9U0VDx2ll8yiV1)
 After training, the model "froze" - when we tried to predict values ​​on any input data, it gave almost identical results. When we ran the trained model on the CPU, we got NaN instead of the results. We got the same NaN values when we ran the trained model on Raspberry.
 
 Then we tried to train the model on the CPU and the problem disappeared - the loss started to behave normally (see graph below) and real values started to appear on the CPU and Raspberry.
-
+![our team](https://drive.google.com/uc?export=view&id=1sImHECWQAtlSLLNC9qKlnP73XsL5ruS4)
 For a while, we couldn't solve the problem with the GPU. However, reinstalling the environment manually and changing the version of Tensorflow to a newer version solved the problem. As it turns out, the donkey environment uses Tensorflow 2.2, which only works with CUDA 10 and cuDNN 7. There was a conflict and probably the graphics card was loading the data incorrectly, causing the training to work incorrectly. So when we installed the new version of Tensorflow 2.9, the training process started working. However, a new problem arose - the model format between Tensorflow 2.9 (on the laptop) and Tensorflow 2.2 (on the Raspberry) is incompatible. This was solved by installing the latest available version of Tensorflow 2.4 on Raspberry.
 
 ### Training on cluster 
