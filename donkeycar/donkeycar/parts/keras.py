@@ -390,58 +390,6 @@ class KerasLinear(KerasPilot):
                    'n_outputs1': tf.TensorShape([])})
         return shapes
 
-class LinearWithStopsWideCut(LinearWithStops):
-    def create_model(self):
-        drop = 0.2
-        img_in = Input(shape=self.input_shape, name='img_in')
-
-        x = img_in
-        x = tf.keras.layers.Cropping2D(cropping=((40, 0), (0, 0)))(x)
-        x = conv2d(24, 5, 2, 1)(x)
-        x = Dropout(drop)(x)
-        x = conv2d(32, 5, 2, 2)(x)
-        x = Dropout(drop)(x)
-        x = conv2d(64, 5, 2, 3)(x)
-        x = Dropout(drop)(x)
-
-        # start stop mechanism (conv layers)
-        stop_out = conv2d(64, 3, 1, "stop_out_1")(x)
-        stop_out = Dropout(drop, name="stop_drop_1")(stop_out)
-        stop_out = conv2d(64, 3, 1, "stop_out_2")(stop_out)
-        stop_out = Dropout(drop, name="stop_drop_2")(stop_out)
-        stop_out = Flatten(name='flattened_stop')(stop_out)
-        # finish stop mechanism (conv layers)
-
-        x = conv2d(64, 3, 1, 4)(x)
-        x = Dropout(drop)(x)
-        x = conv2d(64, 3, 1, 5)(x)
-        x = Dropout(drop)(x)
-        x = Flatten(name='flattened')(x)
-
-        x = Dense(100, activation='relu', name='dense_1')(x)
-        x = Dropout(drop)(x)
-        x = Dense(50, activation='relu', name='dense_2')(x)
-        x = Dropout(drop)(x)
-
-        # start stop mechanism (linear layers)
-        stop_out = Dense(100, activation='relu', name='dense_1_stop_out')(stop_out)  # 30
-        stop_out = Dropout(drop, name="stop_drop_3")(stop_out)
-        stop_out = Dense(50, activation='relu', name='dense_2_stop_out')(stop_out)  # 8
-        stop_out = Dropout(drop, name="stop_drop_4")(stop_out)
-        # finish stop mechanism (linear layers)
-
-        outputs = []
-        for i in range(self.num_outputs):
-            fin_lr = Dense(1, activation='linear', name='n_outputs' + str(i))(x)
-            outputs.append(fin_lr)
-
-        # stop mechanism (final layers)
-        fin_stop_lr = Dense(1, activation='linear', name='should_stop')(stop_out)
-        outputs.append(fin_stop_lr)
-
-        model = Model(inputs=[img_in], outputs=outputs, name='linear_with_stops')
-        return model
-
 class LinearWithStops(KerasPilot):
     def __init__(self,
                  interpreter: Interpreter = KerasInterpreter(),
@@ -558,6 +506,57 @@ class LinearWithStops(KerasPilot):
                    'should_stop': tf.TensorShape([])})
         return shapes
 
+class LinearWithStopsWideCut(LinearWithStops):
+    def create_model(self):
+        drop = 0.2
+        img_in = Input(shape=self.input_shape, name='img_in')
+
+        x = img_in
+        x = tf.keras.layers.Cropping2D(cropping=((40, 0), (0, 0)))(x)
+        x = conv2d(24, 5, 2, 1)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(32, 5, 2, 2)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(64, 5, 2, 3)(x)
+        x = Dropout(drop)(x)
+
+        # start stop mechanism (conv layers)
+        stop_out = conv2d(64, 3, 1, "stop_out_1")(x)
+        stop_out = Dropout(drop, name="stop_drop_1")(stop_out)
+        stop_out = conv2d(64, 3, 1, "stop_out_2")(stop_out)
+        stop_out = Dropout(drop, name="stop_drop_2")(stop_out)
+        stop_out = Flatten(name='flattened_stop')(stop_out)
+        # finish stop mechanism (conv layers)
+
+        x = conv2d(64, 3, 1, 4)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(64, 3, 1, 5)(x)
+        x = Dropout(drop)(x)
+        x = Flatten(name='flattened')(x)
+
+        x = Dense(100, activation='relu', name='dense_1')(x)
+        x = Dropout(drop)(x)
+        x = Dense(50, activation='relu', name='dense_2')(x)
+        x = Dropout(drop)(x)
+
+        # start stop mechanism (linear layers)
+        stop_out = Dense(100, activation='relu', name='dense_1_stop_out')(stop_out)  # 30
+        stop_out = Dropout(drop, name="stop_drop_3")(stop_out)
+        stop_out = Dense(50, activation='relu', name='dense_2_stop_out')(stop_out)  # 8
+        stop_out = Dropout(drop, name="stop_drop_4")(stop_out)
+        # finish stop mechanism (linear layers)
+
+        outputs = []
+        for i in range(self.num_outputs):
+            fin_lr = Dense(1, activation='linear', name='n_outputs' + str(i))(x)
+            outputs.append(fin_lr)
+
+        # stop mechanism (final layers)
+        fin_stop_lr = Dense(1, activation='linear', name='should_stop')(stop_out)
+        outputs.append(fin_stop_lr)
+
+        model = Model(inputs=[img_in], outputs=outputs, name='linear_with_stops')
+        return model
 
 class LinearWithStopsWide(KerasPilot):
     def __init__(self,
@@ -619,6 +618,8 @@ class LinearWithStopsWide(KerasPilot):
         outputs.append(fin_stop_lr)
         fin_stop_lr = Dense(1, activation='linear', name='right_car_stop')(stop_out)
         outputs.append(fin_stop_lr)
+        fin_stop_lr = Dense(1, activation='linear', name='pedestrian_start_stop')(stop_out)
+        outputs.append(fin_stop_lr)
 
         model = Model(inputs=[img_in], outputs=outputs, name='linear_with_stops')
         return model
@@ -649,15 +650,17 @@ class LinearWithStopsWide(KerasPilot):
         stop_sign = interpreter_out[2]
         pedestrian = interpreter_out[3]
         right_side_car = interpreter_out[4]
-        if stop_sign[0] > STOP_SIGN_PROB or pedestrian[0] > PEDESTRIAN_PROB or right_side_car[0] > RIGHT_SIDE_CAR_PROB:
+        pedestrian_start = interpreter_out[5]
+        if stop_sign[0] > STOP_SIGN_PROB or pedestrian[0] > PEDESTRIAN_PROB or right_side_car[0] > RIGHT_SIDE_CAR_PROB or pedestrian_start[0] > PEDESTRIAN_START_BROB:
             throttle = [THROTTLE_STOP]
         else:
             throttle = [THROTTLE]
-        print("steering = {} throttle = {} stop_sign = {} pedestrian = {} right_side_car = {}".format(steering[0],
+        print("steering = {} throttle = {} stop_sign = {} pedestrian = {} right_side_car = {} pedestrian_start = {}".format(steering[0],
                                                                                                       throttle[0],
                                                                                                       stop_sign[0],
                                                                                                       pedestrian[0],
                                                                                                       right_side_car[0],
+                                                                                                      pedestrian_start[0],
                                                                                                       ))
         return steering[0], throttle[0]
 
@@ -677,13 +680,17 @@ class LinearWithStopsWide(KerasPilot):
             right_side_car: int = record.underlying['user/right_side_car']
         else:
             right_side_car: int = 0
-        return angle, throttle, stop_sign, pedestrian, right_side_car
+        if 'user/pedestrian_start' in record.underlying.keys():
+            pedestrian_start: int = record.underlying['user/pedestrian_start']
+        else:
+            pedestrian_start: int = 0
+        return angle, throttle, stop_sign, pedestrian, right_side_car, pedestrian_start
 
     def y_translate(self, y: XY) -> Dict[str, Union[float, List[float]]]:
         assert isinstance(y, tuple), 'Expected tuple'
-        angle, throttle, stop_sign, pedestrian, right_side_car = y
+        angle, throttle, stop_sign, pedestrian, right_side_car, pedestrian_start = y
         return {'n_outputs0': angle, 'n_outputs1': throttle, 'stop_sign_stop': stop_sign,
-                'pedestrian_stop': pedestrian, 'right_car_stop': right_side_car}
+                'pedestrian_stop': pedestrian, 'right_car_stop': right_side_car, 'pedestrian_start_stop': pedestrian_start}
 
     def output_shapes(self):
         # need to cut off None from [None, 120, 160, 3] tensor shape
@@ -695,6 +702,7 @@ class LinearWithStopsWide(KerasPilot):
                       'stop_sign_stop': tf.TensorShape([]),
                       'pedestrian_stop': tf.TensorShape([]),
                       'right_car_stop': tf.TensorShape([]),
+                      'pedestrian_start_stop': tf.TensorShape([])
                   })
         return shapes
 
@@ -952,6 +960,123 @@ class LinearWithStopsWideCutSeparateV2(LinearWithStopsWide):
         fin_stop_lr = Dense(1, activation='linear', name='pedestrian_stop')(pedestrian)
         outputs.append(fin_stop_lr)
         fin_stop_lr = Dense(1, activation='linear', name='right_car_stop')(right_side_car)
+        outputs.append(fin_stop_lr)
+
+        model = Model(inputs=[img_in], outputs=outputs, name='linear_with_stops_wide_cut_separate')
+        return model
+
+class LinearWithStopsWideCutSeparateV3(LinearWithStopsWide):
+    def create_model(self):
+        drop = 0.2
+        img_in = Input(shape=self.input_shape, name='img_in')
+
+        x = img_in
+
+        cut_stop_sign = img_in
+        cut_pedestrian_start = tf.keras.layers.Cropping2D(cropping=((60, 0), (0, 0)), data_format=None, name="cut_pedestrian_start")(x)
+        cut_pedestrian = tf.keras.layers.Cropping2D(cropping=((60, 0), (0, 0)), data_format=None, name="cut_pedestrian")(x)
+        cut_right_side_car = tf.keras.layers.Cropping2D(cropping=((60, 0), (60, 0)), data_format=None, name="cut_right_side_car")(x)
+        x = tf.keras.layers.Cropping2D(cropping=((40, 0), (0, 0)), data_format=None)(x)
+
+        x = conv2d(24, 5, 2, 1)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(32, 5, 2, 2)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(64, 5, 2, 3)(x)
+        x = Dropout(drop)(x)
+
+        x = conv2d(64, 3, 1, 4)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(64, 3, 1, 5)(x)
+        x = Dropout(drop)(x)
+        x = Flatten(name='flattened')(x)
+
+        x = Dense(100, activation='relu', name='dense_1')(x)
+        x = Dropout(drop)(x)
+        x = Dense(50, activation='relu', name='dense_2')(x)
+        x = Dropout(drop)(x)
+
+        # start stop mechanism stop_sign
+        stop_sign = conv2d(24, 5, 2, "stop_stop_sign_out_1")(cut_stop_sign)
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_1")(stop_sign)
+        stop_sign = conv2d(32, 5, 2, "stop_stop_sign_out_2")(stop_sign)
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_2")(stop_sign)
+        stop_sign = conv2d(64, 5, 2, "stop_stop_sign_out_3")(stop_sign)
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_3")(stop_sign)
+        stop_sign = conv2d(64, 3, 1, "stop_stop_sign_out_4")(stop_sign)
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_4")(stop_sign)
+        stop_sign = conv2d(64, 3, 1, "stop_stop_sign_out_5")(stop_sign)
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_5")(stop_sign)
+        stop_sign = Flatten(name='flattened_stop_stop_sign')(stop_sign)
+
+        stop_sign = Dense(100, activation='relu', name='dense_1_stop_stop_sign_out')(stop_sign)  # 30
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_6")(stop_sign)
+        stop_sign = Dense(50, activation='relu', name='dense_2_stop_stop_sign_out')(stop_sign)  # 8
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_7")(stop_sign)
+        # finish stop mechanism
+
+        # start stop mechanism pedestrian
+        pedestrian = conv2d(16, 5, 2, "stop_pedestrian_out_1")(cut_pedestrian)
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_1")(pedestrian)
+        pedestrian = conv2d(24, 5, 2, "stop_pedestrian_out_2")(pedestrian)
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_2")(pedestrian)
+        pedestrian = conv2d(32, 3, 2, "stop_pedestrian_out_3")(pedestrian)
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_3")(pedestrian)
+        pedestrian = conv2d(32, 3, 2, "stop_pedestrian_out_4")(pedestrian)
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_4")(pedestrian)
+        pedestrian = Flatten(name='flattened_stop_pedestrian')(pedestrian)
+
+        pedestrian = Dense(100, activation='relu', name='dense_1_stop_pedestrian_out')(pedestrian)  # 30
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_6")(pedestrian)
+        pedestrian = Dense(50, activation='relu', name='dense_2_stop_pedestrian_out')(pedestrian)  # 8
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_7")(pedestrian)
+        # finish stop mechanism
+
+        # start stop mechanism pedestrian
+        pedestrian_start = conv2d(16, 5, 2, "stop_pedestrian_start_start_out_1")(cut_pedestrian_start)
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_1")(pedestrian_start)
+        pedestrian_start = conv2d(24, 5, 2, "stop_pedestrian_start_out_2")(pedestrian_start)
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_2")(pedestrian_start)
+        pedestrian_start = conv2d(32, 3, 2, "stop_pedestrian_start_out_3")(pedestrian_start)
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_3")(pedestrian_start)
+        pedestrian_start = conv2d(32, 3, 2, "stop_pedestrian_start_out_4")(pedestrian_start)
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_4")(pedestrian_start)
+        pedestrian_start = Flatten(name='flattened_stop_pedestrian_start')(pedestrian_start)
+
+        pedestrian_start = Dense(100, activation='relu', name='dense_1_stop_pedestrian_start_out')(pedestrian_start)  # 30
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_6")(pedestrian_start)
+        pedestrian_start = Dense(50, activation='relu', name='dense_2_stop_pedestrian_start_out')(pedestrian_start)  # 8
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_7")(pedestrian_start)
+        # finish stop mechanism
+
+        # start stop mechanism right_side_car
+        right_side_car = conv2d(24, 5, 2, "stop_right_side_car_out_1")(cut_right_side_car)
+        right_side_car = Dropout(drop, name="stop_right_side_car_drop_1")(right_side_car)
+        right_side_car = conv2d(32, 5, 2, "stop_right_side_car_out_2")(right_side_car)
+        right_side_car = Dropout(drop, name="stop_right_side_car_drop_2")(right_side_car)
+        right_side_car = conv2d(64, 3, 2, "stop_right_side_car_out_3")(right_side_car)
+        right_side_car = Dropout(drop, name="stop_right_side_car_drop_3")(right_side_car)
+        right_side_car = Flatten(name='flattened_stop_right_side_car')(right_side_car)
+
+        right_side_car = Dense(100, activation='relu', name='dense_1_stop_right_side_car_out')(right_side_car)  # 30
+        right_side_car = Dropout(drop, name="stop_right_side_car_drop_6")(right_side_car)
+        right_side_car = Dense(50, activation='relu', name='dense_2_stop_right_side_car_out')(right_side_car)  # 8
+        right_side_car = Dropout(drop, name="stop_right_side_car_drop_7")(right_side_car)
+        # finish stop mechanism
+
+        outputs = []
+        for i in range(self.num_outputs):
+            fin_lr = Dense(1, activation='linear', name='n_outputs' + str(i))(x)
+            outputs.append(fin_lr)
+
+        # stop mechanism (final layers)
+        fin_stop_lr = Dense(1, activation='linear', name='stop_sign_stop')(stop_sign)
+        outputs.append(fin_stop_lr)
+        fin_stop_lr = Dense(1, activation='linear', name='pedestrian_stop')(pedestrian)
+        outputs.append(fin_stop_lr)
+        fin_stop_lr = Dense(1, activation='linear', name='right_car_stop')(right_side_car)
+        outputs.append(fin_stop_lr)
+        fin_stop_lr = Dense(1, activation='linear', name='pedestrian_start_stop')(pedestrian_start)
         outputs.append(fin_stop_lr)
 
         model = Model(inputs=[img_in], outputs=outputs, name='linear_with_stops_wide_cut_separate')
