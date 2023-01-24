@@ -1,6 +1,6 @@
 import os
 import sys
-from pyfiglet import Figlet
+# from pyfiglet import Figlet
 import logging
 from pkg_resources import get_distribution
 
@@ -8,10 +8,10 @@ __version__ = get_distribution('donkeycar').version
 
 logging.basicConfig(level=os.environ.get('LOGLEVEL', 'INFO').upper())
 
-f = Figlet(font='speed')
+# f = Figlet(font='speed')
 
 
-print(f.renderText('Donkey Car'))
+# print(f.renderText('Donkey Car'))
 print(f'using donkey v{__version__} ...')
 
 if sys.version_info.major < 3 or sys.version_info.minor < 6:

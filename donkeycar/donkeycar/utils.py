@@ -457,7 +457,7 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-def get_model_by_type(model_type: str, cfg: 'Config', continue_train: bool = False) -> Union['KerasPilot', 'FastAiPilot']:
+def get_model_by_type(model_type: str, cfg: 'Config', train_stage: int = -1) -> Union['KerasPilot', 'FastAiPilot']:
     '''
     given the string model_type and the configuration settings in cfg
     create a Keras model and return it.
@@ -465,7 +465,8 @@ def get_model_by_type(model_type: str, cfg: 'Config', continue_train: bool = Fal
     from donkeycar.parts.keras import KerasCategorical, KerasLinear, \
         KerasInferred, KerasIMU, KerasMemory, KerasBehavioral, KerasLocalizer, \
         KerasLSTM, Keras3D_CNN, PilotNet, LinearWithStops, LinearWithStopsWide, LinearWithStopsWideCut, \
-        LinearWithStopsWideCutSeparate, LinearWithStopsWideCutSeparateV2, LinearWithStopsWideCutSeparateV3
+        LinearWithStopsWideCutSeparate, LinearWithStopsWideCutSeparateV2, LinearWithStopsWideCutSeparateV3, \
+        LinearWithStopsWideCutSeparateV3WithHighResolution, LinearWithStopsWideCutSeparateV4
     from donkeycar.parts.interpreter import KerasInterpreter, TfLite, TensorRT, \
         FastAIInterpreter
 
@@ -493,21 +494,25 @@ def get_model_by_type(model_type: str, cfg: 'Config', continue_train: bool = Fal
     if used_model_type == "linear":
         kl = KerasLinear(interpreter=interpreter, input_shape=input_shape)
     elif used_model_type == "linear_with_stops":
-        kl = LinearWithStops(interpreter=interpreter, input_shape=input_shape, continue_train=continue_train)
+        kl = LinearWithStops(interpreter=interpreter, input_shape=input_shape, train_stage=train_stage)
     elif used_model_type == "linear_with_stops_wide":
-        kl = LinearWithStopsWide(interpreter=interpreter, input_shape=input_shape, continue_train=continue_train)
+        kl = LinearWithStopsWide(interpreter=interpreter, input_shape=input_shape, train_stage=train_stage)
     elif used_model_type == "linear_with_stops_wide_cut":
-        kl = LinearWithStopsWideCut(interpreter=interpreter, input_shape=input_shape, continue_train=continue_train)
+        kl = LinearWithStopsWideCut(interpreter=interpreter, input_shape=input_shape, train_stage=train_stage)
     elif used_model_type == "linear_with_stops_wide_cut_separate":
-        kl = LinearWithStopsWideCutSeparate(interpreter=interpreter, input_shape=input_shape, continue_train=continue_train)
+        kl = LinearWithStopsWideCutSeparate(interpreter=interpreter, input_shape=input_shape, train_stage=train_stage)
     elif used_model_type == "linear_with_stops_wide_cut_separate_v2":
-        kl = LinearWithStopsWideCutSeparateV2(interpreter=interpreter, input_shape=input_shape, continue_train=continue_train)
+        kl = LinearWithStopsWideCutSeparateV2(interpreter=interpreter, input_shape=input_shape, train_stage=train_stage)
     elif used_model_type == "linear_with_stops_wide_cut_separate_v3":
-        kl = LinearWithStopsWideCutSeparateV3(interpreter=interpreter, input_shape=input_shape, continue_train=continue_train)
+        kl = LinearWithStopsWideCutSeparateV3(interpreter=interpreter, input_shape=input_shape, train_stage=train_stage)
+    elif used_model_type == "linear_with_stops_wide_cut_separate_v4":
+        kl = LinearWithStopsWideCutSeparateV4(interpreter=interpreter, input_shape=input_shape, train_stage=train_stage)
+    elif used_model_type == "linear_with_stops_wide_cut_separate_v3_with_high_resolution":
+        kl = LinearWithStopsWideCutSeparateV3WithHighResolution(interpreter=interpreter, input_shape=input_shape, train_stage=train_stage)
     elif used_model_type == "pilotnet":
         kl = PilotNet(interpreter=interpreter, input_shape=input_shape)
     elif used_model_type == "linear_with_stops_wide_cut":
-        kl = LinearWithStopsWideCut(interpreter=interpreter, input_shape=input_shape, continue_train=continue_train)
+        kl = LinearWithStopsWideCut(interpreter=interpreter, input_shape=input_shape, train_stage=train_stage)
     elif used_model_type == "categorical":
         kl = KerasCategorical(
             interpreter=interpreter,

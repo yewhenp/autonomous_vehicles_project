@@ -5,7 +5,7 @@ Basic usage should feel familiar: train.py --tubs data/ --model models/mypilot.h
 
 Usage:
     train.py [--tubs=tubs] (--model=<model>)
-    [--type=(linear|inferred|tensorrt_linear|tflite_linear)] [--continue-train=(true|false)]
+    [--type=(linear|inferred|tensorrt_linear|tflite_linear)] [--train-stage=(0|1|2)] [--load-weights=(true|false)]
     [--comment=<comment>]
 
 Options:
@@ -26,8 +26,9 @@ def main():
     model = args['--model']
     model_type = args['--type']
     comment = args['--comment']
-    continue_train = args['--continue-train'] == "true"
-    train(cfg, tubs, model, model_type, comment, continue_train=continue_train)
+    train_stage = int(args['--train-stage'])
+    load_weights = args['--load-weights'] == "true"
+    train(cfg, tubs, model, model_type, comment, train_stage=train_stage, load_weights=load_weights)
 
 
 if __name__ == "__main__":

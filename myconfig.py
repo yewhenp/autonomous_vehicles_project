@@ -23,8 +23,8 @@ DRIVE_LOOP_HZ = 20      # the vehicle loop will pause if faster than this speed.
 # 
 # #CAMERA
 CAMERA_TYPE = "IMAGE_LIST"   # (PICAM|WEBCAM|CVCAM|CSIC|V4L|D435|MOCK|IMAGE_LIST)
-# IMAGE_W = 160
-# IMAGE_H = 80
+#IMAGE_W = 320
+#IMAGE_H = 240
 # IMAGE_DEPTH = 3         # default RGB=3, make 1 for mono
 # CAMERA_FRAMERATE = DRIVE_LOOP_HZ
 # CAMERA_VFLIP = False
@@ -34,7 +34,7 @@ CAMERA_TYPE = "IMAGE_LIST"   # (PICAM|WEBCAM|CVCAM|CSIC|V4L|D435|MOCK|IMAGE_LIST
 # CSIC_CAM_GSTREAMER_FLIP_PARM = 0 # (0 => none , 4 => Flip horizontally, 6 => Flip vertically)
 # 
 # # For IMAGE_LIST camera
-PATH_MASK = "/home/yevhen/Documents/tartu_7_semestr/delta_car/data/tub_43_22-09-26_mirrored/images/*.jpg"
+PATH_MASK = "/home/yevhen/Documents/tartu_7_semestr/delta_car/data/empty_medium_resolution/images/*.jpg"
 # 
 # #9865, over rides only if needed, ie. TX2..
 # PCA9685_I2C_ADDR = 0x40     #I2C address, use i2cdetect to validate this number
@@ -348,13 +348,13 @@ THROTTLE_REVERSE_PWM = 320      #pwm value for max reverse throttle
 # # tensorflow models: (linear|categorical|tflite_linear|tensorrt_linear)
 # # pytorch models: (resnet18)
 # DEFAULT_MODEL_TYPE = 'linear'
-BATCH_SIZE = 64                #how many records to use when doing one pass of gradient decent. Use a smaller number if your gpu is running out of memory.
+BATCH_SIZE = 8                #how many records to use when doing one pass of gradient decent. Use a smaller number if your gpu is running out of memory.
 TRAIN_TEST_SPLIT = 0.9          #what percent of records to use for training. the remaining used for validation.
 MAX_EPOCHS = 100                #how many times to visit all records of your data
-SHOW_PLOT = True                #would you like to see a pop up display of final loss?
+SHOW_PLOT = False                #would you like to see a pop up display of final loss?
 VERBOSE_TRAIN = True            #would you like to see a progress bar with text during training?
 USE_EARLY_STOP = True           #would you like to stop the training if we see it's not improving fit?
-EARLY_STOP_PATIENCE = 5         #how many epochs to wait before no improvement
+EARLY_STOP_PATIENCE = 3         #how many epochs to wait before no improvement
 MIN_DELTA = .0005               #early stop will want this much loss change before calling it improved.
 PRINT_MODEL_SUMMARY = True      #print layers and weights to stdout
 OPTIMIZER = "adam"                #adam, sgd, rmsprop, etc.. None accepts default

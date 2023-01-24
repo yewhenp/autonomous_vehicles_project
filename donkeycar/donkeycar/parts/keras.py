@@ -13,6 +13,7 @@ import os
 from abc import ABC, abstractmethod
 from collections import deque
 
+import cv2
 import numpy as np
 from typing import Dict, Tuple, Optional, Union, List, Sequence, Callable
 from logging import getLogger
@@ -29,6 +30,7 @@ from donkeycar.pipeline.types import TubRecord
 from donkeycar.parts.interpreter import Interpreter, KerasInterpreter
 
 import tensorflow as tf
+import json
 from tensorflow import keras
 from tensorflow.keras.layers import Input, Dense
 from tensorflow.keras.layers import Convolution2D, MaxPooling2D, \
@@ -45,12 +47,37 @@ from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint
 # physical_devices = tf.config.experimental.list_physical_devices('GPU')
 # assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
 # config = tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
 THROTTLE = 0.85
 THROTTLE_STOP = 0
-STOP_SIGN_PROB = 0.5
+STOP_SIGN_PROB = 0.9
 PEDESTRIAN_PROB = 0.9
-RIGHT_SIDE_CAR_PROB = 2
+RIGHT_SIDE_CAR_PROB = 0.9
+PEDESTRIAN_START_PROB = 0.9
+ARROW_ENABLE_PROB = 0.9
+ARROW_THROTTLE = 0.85
+
 ONE_BYTE_SCALE = 1.0 / 255.0
+
+
+def reparse_config():
+    global THROTTLE, THROTTLE_STOP, STOP_SIGN_PROB, PEDESTRIAN_PROB, RIGHT_SIDE_CAR_PROB, PEDESTRIAN_START_PROB, ARROW_ENABLE_PROB, ARROW_THROTTLE
+    try:
+        with open("my_constants_config.json") as filee:
+            conf = json.load(filee)
+            THROTTLE = conf["throttle"]
+            THROTTLE_STOP = conf["throttle_stop"]
+            STOP_SIGN_PROB = conf["stop_sign_prob"]
+            PEDESTRIAN_PROB = conf["pedestrian_prob"]
+            RIGHT_SIDE_CAR_PROB = conf["right_side_car_prob"]
+            PEDESTRIAN_START_PROB = conf["pedestrian_start_prob"]
+            ARROW_ENABLE_PROB = conf["arrow_enable_prob"]
+            ARROW_THROTTLE = conf["arrow_throttle"]
+
+    except Exception as e:
+        print(e)
+
+reparse_config()
 
 # type of x
 XY = Union[float, np.ndarray, Tuple[Union[float, np.ndarray], ...]]
@@ -77,9 +104,6 @@ class KerasPilot(ABC):
     def load(self, model_path: str) -> None:
         logger.info(f'Loading model {model_path}')
         self.interpreter.load(model_path)
-
-    def set_continue_train(self):
-        self.continue_train = True
 
     def load_weights(self, model_path: str, by_name: bool = True) -> None:
         self.interpreter.load_weights(model_path, by_name=by_name)
@@ -394,9 +418,9 @@ class LinearWithStops(KerasPilot):
     def __init__(self,
                  interpreter: Interpreter = KerasInterpreter(),
                  input_shape: Tuple[int, ...] = (120, 160, 3),
-                 num_outputs: int = 2, continue_train: bool = False):
+                 num_outputs: int = 2, train_stage: int = 0):
         self.num_outputs = num_outputs
-        self.continue_train = continue_train
+        self.train_stage = train_stage
         super().__init__(interpreter, input_shape)
         self.handle_freeze()
 
@@ -451,15 +475,15 @@ class LinearWithStops(KerasPilot):
         return model
 
     def handle_freeze(self):
-        print(f"handle_freeze self.continue_train = {self.continue_train}")
+        print(f"handle_freeze self.train_stage = {self.train_stage}")
         for i in range(len(self.interpreter.model.layers)):
-            if self.continue_train:
-                if "stop" not in self.interpreter.model.layers[i].name:
+            if self.train_stage == 0:
+                if "stop" in self.interpreter.model.layers[i].name:
                     self.interpreter.model.layers[i].trainable = False
                 else:
                     self.interpreter.model.layers[i].trainable = True
-            else:
-                if "stop" not in self.interpreter.model.layers[i].name:
+            elif self.train_stage == 1:
+                if "stop" in self.interpreter.model.layers[i].name:
                     self.interpreter.model.layers[i].trainable = True
                 else:
                     self.interpreter.model.layers[i].trainable = False
@@ -562,9 +586,9 @@ class LinearWithStopsWide(KerasPilot):
     def __init__(self,
                  interpreter: Interpreter = KerasInterpreter(),
                  input_shape: Tuple[int, ...] = (120, 160, 3),
-                 num_outputs: int = 2, continue_train: bool = False):
+                 num_outputs: int = 2, train_stage: int = 0):
         self.num_outputs = num_outputs
-        self.continue_train = continue_train
+        self.train_stage = train_stage
         super().__init__(interpreter, input_shape)
         self.handle_freeze()
 
@@ -625,15 +649,15 @@ class LinearWithStopsWide(KerasPilot):
         return model
 
     def handle_freeze(self):
-        print(f"handle_freeze self.continue_train = {self.continue_train}")
+        print(f"handle_freeze self.train_stage = {self.train_stage}")
         for i in range(len(self.interpreter.model.layers)):
-            if self.continue_train:
-                if "stop" not in self.interpreter.model.layers[i].name:
+            if self.train_stage == 0:
+                if "stop" in self.interpreter.model.layers[i].name:
                     self.interpreter.model.layers[i].trainable = False
                 else:
                     self.interpreter.model.layers[i].trainable = True
-            else:
-                if "stop" not in self.interpreter.model.layers[i].name:
+            elif self.train_stage == 1:
+                if "stop" in self.interpreter.model.layers[i].name:
                     self.interpreter.model.layers[i].trainable = True
                 else:
                     self.interpreter.model.layers[i].trainable = False
@@ -684,8 +708,19 @@ class LinearWithStopsWide(KerasPilot):
             pedestrian_start: int = record.underlying['user/pedestrian_start']
         else:
             pedestrian_start: int = 0
-        return angle, throttle, stop_sign, pedestrian, right_side_car, pedestrian_start
+        if 'user/high_resolution_enable' in record.underlying.keys():
+            high_resolution_enable: int = record.underlying['user/high_resolution_enable']
+        else:
+            high_resolution_enable: int = 0
+        # return angle, throttle, stop_sign, pedestrian, right_side_car, pedestrian_start, high_resolution_enable, angle
+        return angle, throttle, stop_sign, pedestrian, right_side_car, pedestrian_start #, high_resolution_enable, angle
 
+    # def y_translate(self, y: XY) -> Dict[str, Union[float, List[float]]]:
+    #     assert isinstance(y, tuple), 'Expected tuple'
+    #     angle, throttle, stop_sign, pedestrian, right_side_car, pedestrian_start, high_resolution_enable, high_resolution_steering = y
+    #     return {'n_outputs0': angle, 'n_outputs1': throttle, 'stop_sign_stop': stop_sign,
+    #             'pedestrian_stop': pedestrian, 'right_car_stop': right_side_car, 'pedestrian_start_stop': pedestrian_start,
+    #             'high_resolution_enable': high_resolution_enable, 'high_resolution_steering': high_resolution_steering}
     def y_translate(self, y: XY) -> Dict[str, Union[float, List[float]]]:
         assert isinstance(y, tuple), 'Expected tuple'
         angle, throttle, stop_sign, pedestrian, right_side_car, pedestrian_start = y
@@ -1080,6 +1115,399 @@ class LinearWithStopsWideCutSeparateV3(LinearWithStopsWide):
         outputs.append(fin_stop_lr)
 
         model = Model(inputs=[img_in], outputs=outputs, name='linear_with_stops_wide_cut_separate')
+        return model
+
+
+class LinearWithStopsWideCutSeparateV4(LinearWithStopsWide):
+    def create_model(self):
+        drop = 0.2
+        img_in = Input(shape=self.input_shape, name='img_in')
+
+        x = img_in
+
+        cut_stop_sign = tf.keras.layers.Cropping2D(cropping=((0, 40), (20, 20)), data_format=None, name="cut_stop_sign")(x)
+        cut_pedestrian_start = tf.keras.layers.Cropping2D(cropping=((60, 0), (0, 0)), data_format=None, name="cut_pedestrian_start")(x)
+        cut_pedestrian = tf.keras.layers.Cropping2D(cropping=((60, 0), (0, 0)), data_format=None, name="cut_pedestrian")(x)
+        cut_right_side_car = tf.keras.layers.Cropping2D(cropping=((60, 0), (60, 0)), data_format=None, name="cut_right_side_car")(x)
+        x = tf.keras.layers.Cropping2D(cropping=((40, 0), (0, 0)), data_format=None)(x)
+
+        x = conv2d(24, 5, 2, 1)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(32, 5, 2, 2)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(64, 5, 2, 3)(x)
+        x = Dropout(drop)(x)
+
+        x = conv2d(64, 3, 1, 4)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(64, 3, 1, 5)(x)
+        x = Dropout(drop)(x)
+        x = Flatten(name='flattened')(x)
+
+        x = Dense(100, activation='relu', name='dense_1')(x)
+        x = Dropout(drop)(x)
+        x = Dense(50, activation='relu', name='dense_2')(x)
+        x = Dropout(drop)(x)
+
+        # start stop mechanism stop_sign
+        stop_sign = conv2d(24, 5, 2, "stop_stop_sign_out_1")(cut_stop_sign)
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_1")(stop_sign)
+        stop_sign = conv2d(32, 5, 2, "stop_stop_sign_out_2")(stop_sign)
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_2")(stop_sign)
+        stop_sign = conv2d(64, 5, 2, "stop_stop_sign_out_3")(stop_sign)
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_3")(stop_sign)
+        stop_sign = conv2d(64, 3, 1, "stop_stop_sign_out_4")(stop_sign)
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_4")(stop_sign)
+        stop_sign = conv2d(64, 3, 1, "stop_stop_sign_out_5")(stop_sign)
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_5")(stop_sign)
+        stop_sign = Flatten(name='flattened_stop_stop_sign')(stop_sign)
+
+        stop_sign = Dense(100, activation='relu', name='dense_1_stop_stop_sign_out')(stop_sign)  # 30
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_6")(stop_sign)
+        stop_sign = Dense(50, activation='relu', name='dense_2_stop_stop_sign_out')(stop_sign)  # 8
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_7")(stop_sign)
+        # finish stop mechanism
+
+        # start stop mechanism pedestrian
+        pedestrian = conv2d(16, 5, 2, "stop_pedestrian_out_1")(cut_pedestrian)
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_1")(pedestrian)
+        pedestrian = conv2d(24, 5, 2, "stop_pedestrian_out_2")(pedestrian)
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_2")(pedestrian)
+        pedestrian = conv2d(32, 3, 2, "stop_pedestrian_out_3")(pedestrian)
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_3")(pedestrian)
+        pedestrian = conv2d(32, 3, 2, "stop_pedestrian_out_4")(pedestrian)
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_4")(pedestrian)
+        pedestrian = Flatten(name='flattened_stop_pedestrian')(pedestrian)
+
+        pedestrian = Dense(100, activation='relu', name='dense_1_stop_pedestrian_out')(pedestrian)  # 30
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_6")(pedestrian)
+        pedestrian = Dense(50, activation='relu', name='dense_2_stop_pedestrian_out')(pedestrian)  # 8
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_7")(pedestrian)
+        # finish stop mechanism
+
+        # start stop mechanism pedestrian
+        pedestrian_start = conv2d(16, 5, 2, "stop_pedestrian_start_start_out_1")(cut_pedestrian_start)
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_1")(pedestrian_start)
+        pedestrian_start = conv2d(24, 5, 2, "stop_pedestrian_start_out_2")(pedestrian_start)
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_2")(pedestrian_start)
+        pedestrian_start = conv2d(32, 3, 2, "stop_pedestrian_start_out_3")(pedestrian_start)
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_3")(pedestrian_start)
+        pedestrian_start = conv2d(32, 3, 2, "stop_pedestrian_start_out_4")(pedestrian_start)
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_4")(pedestrian_start)
+        pedestrian_start = Flatten(name='flattened_stop_pedestrian_start')(pedestrian_start)
+
+        pedestrian_start = Dense(100, activation='relu', name='dense_1_stop_pedestrian_start_out')(pedestrian_start)  # 30
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_6")(pedestrian_start)
+        pedestrian_start = Dense(50, activation='relu', name='dense_2_stop_pedestrian_start_out')(pedestrian_start)  # 8
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_7")(pedestrian_start)
+        # finish stop mechanism
+
+        # start stop mechanism right_side_car
+        right_side_car = conv2d(24, 5, 2, "stop_right_side_car_out_1")(cut_right_side_car)
+        right_side_car = Dropout(drop, name="stop_right_side_car_drop_1")(right_side_car)
+        right_side_car = conv2d(32, 5, 2, "stop_right_side_car_out_2")(right_side_car)
+        right_side_car = Dropout(drop, name="stop_right_side_car_drop_2")(right_side_car)
+        right_side_car = conv2d(64, 3, 2, "stop_right_side_car_out_3")(right_side_car)
+        right_side_car = Dropout(drop, name="stop_right_side_car_drop_3")(right_side_car)
+        right_side_car = Flatten(name='flattened_stop_right_side_car')(right_side_car)
+
+        right_side_car = Dense(100, activation='relu', name='dense_1_stop_right_side_car_out')(right_side_car)  # 30
+        right_side_car = Dropout(drop, name="stop_right_side_car_drop_6")(right_side_car)
+        right_side_car = Dense(50, activation='relu', name='dense_2_stop_right_side_car_out')(right_side_car)  # 8
+        right_side_car = Dropout(drop, name="stop_right_side_car_drop_7")(right_side_car)
+        # finish stop mechanism
+
+        outputs = []
+        for i in range(self.num_outputs):
+            fin_lr = Dense(1, activation='linear', name='n_outputs' + str(i))(x)
+            outputs.append(fin_lr)
+
+        # stop mechanism (final layers)
+        fin_stop_lr = Dense(1, activation='linear', name='stop_sign_stop')(stop_sign)
+        outputs.append(fin_stop_lr)
+        fin_stop_lr = Dense(1, activation='linear', name='pedestrian_stop')(pedestrian)
+        outputs.append(fin_stop_lr)
+        fin_stop_lr = Dense(1, activation='linear', name='right_car_stop')(right_side_car)
+        outputs.append(fin_stop_lr)
+        fin_stop_lr = Dense(1, activation='linear', name='pedestrian_start_stop')(pedestrian_start)
+        outputs.append(fin_stop_lr)
+
+        model = Model(inputs=[img_in], outputs=outputs, name='linear_with_stops_wide_cut_separate')
+        return model
+
+
+class LinearWithStopsWideCutSeparateV3WithHighResolution(LinearWithStopsWide):
+    def __init__(self, interpreter: Interpreter = KerasInterpreter(),
+                 input_shape: Tuple[int, ...] = (120, 160, 3),
+                 num_outputs: int = 2, train_stage: int = 0):
+        self.input_shape_high_resolution = (240, 320, 3)
+        super().__init__(interpreter, (120, 160, 3), num_outputs, train_stage)
+
+    def x_translate(self, x: XY) -> Dict[str, Union[float, np.ndarray]]:
+        if x.shape == (120, 160, 3):
+            return {'img_in': x, 'high_resolution_img_in': cv2.resize(x, (self.input_shape_high_resolution[1], self.input_shape_high_resolution[0]))}
+        return {'img_in': cv2.resize(x, (self.input_shape[1], self.input_shape[0])), 'high_resolution_img_in': x}
+
+    def handle_freeze(self):
+        print(f"handle_freeze self.train_stage = {self.train_stage}")
+        for i in range(len(self.interpreter.model.layers)):
+            if self.train_stage == 0:
+                if "stop" in self.interpreter.model.layers[i].name or "high_resolution" in self.interpreter.model.layers[i].name:
+                    self.interpreter.model.layers[i].trainable = False
+                else:
+                    self.interpreter.model.layers[i].trainable = True
+            elif self.train_stage == 1:
+                if "pedestrian_start" in self.interpreter.model.layers[i].name:
+                    self.interpreter.model.layers[i].trainable = True
+                else:
+                    self.interpreter.model.layers[i].trainable = False
+            elif self.train_stage == 2:
+                if "high_resolution" in self.interpreter.model.layers[i].name:
+                    self.interpreter.model.layers[i].trainable = True
+                else:
+                    self.interpreter.model.layers[i].trainable = False
+
+    def compile(self):
+        if self.train_stage == 0:
+            self.interpreter.compile(
+                optimizer=self.optimizer,
+                loss="mse",
+            )
+        elif self.train_stage == 1:
+            self.interpreter.compile(
+                optimizer=self.optimizer,
+                loss="mse",
+                # loss_weights={
+                #     'n_outputs0': 0.01,
+                #     'n_outputs1': 0.01,
+                #     'stop_sign_stop': 0.01,
+                #     'pedestrian_stop': 0.01,
+                #     'right_car_stop': 0.01,
+                #     'pedestrian_start_stop': 1.,
+                #     'high_resolution_steering': 0.01,
+                #     'high_resolution_enable': 0.01,
+                # }
+            )
+        elif self.train_stage == 2:
+            self.interpreter.compile(
+                optimizer=self.optimizer,
+                loss="mse",
+                loss_weights={
+                    'n_outputs0': 0.01,
+                    'n_outputs1': 0.01,
+                    'stop_sign_stop': 0.01,
+                    'pedestrian_stop': 0.01,
+                    'right_car_stop': 0.01,
+                    'pedestrian_start_stop': 0.01,
+                    'high_resolution_steering': 1,
+                    'high_resolution_enable': 1,
+                }
+            )
+    def interpreter_to_output(self, interpreter_out):
+        steering = interpreter_out[0]
+        stop_sign = interpreter_out[2]
+        pedestrian = interpreter_out[3]
+        right_side_car = interpreter_out[4]
+        pedestrian_start = interpreter_out[5]
+        high_resolution_steering = interpreter_out[6]
+        high_resolution_enable = interpreter_out[7]
+
+        reparse_config()
+        if stop_sign[0] > STOP_SIGN_PROB or pedestrian[0] > PEDESTRIAN_PROB or right_side_car[0] > RIGHT_SIDE_CAR_PROB or pedestrian_start[0] > PEDESTRIAN_START_PROB:
+            throttle = [THROTTLE_STOP]
+        else:
+            throttle = [THROTTLE]
+        if high_resolution_enable[0] > ARROW_ENABLE_PROB:
+            steering = high_resolution_steering
+            throttle = [ARROW_THROTTLE]
+        print("steering = {} "
+              "throttle = {} "
+              "stop_sign = {} "
+              "pedestrian = {} "
+              "right_side_car = {} "
+              "pedestrian_start = {} "
+              "high_resolution_steering = {} "
+              "high_resolution_enable = {}".format(steering[0],
+                                                   throttle[0],
+                                                   stop_sign[0],
+                                                   pedestrian[0],
+                                                   right_side_car[0],
+                                                   pedestrian_start[0],
+                                                   high_resolution_steering[0],
+                                                   high_resolution_enable[0],
+                                                   ))
+        return steering[0], throttle[0]
+
+    def output_shapes(self):
+        # need to cut off None from [None, 120, 160, 3] tensor shape
+        img_shape = self.get_input_shapes()[0][1:]
+        img_high_resolution_shape = self.get_input_shapes()[1][1:]
+        shapes = ({'img_in': tf.TensorShape(img_shape), 'high_resolution_img_in': tf.TensorShape(img_high_resolution_shape)},
+                  {
+                      'n_outputs0': tf.TensorShape([]),
+                      'n_outputs1': tf.TensorShape([]),
+                      'stop_sign_stop': tf.TensorShape([]),
+                      'pedestrian_stop': tf.TensorShape([]),
+                      'right_car_stop': tf.TensorShape([]),
+                      'pedestrian_start_stop': tf.TensorShape([]),
+                      'high_resolution_steering': tf.TensorShape([]),
+                      'high_resolution_enable': tf.TensorShape([]),
+                  })
+        return shapes
+
+    def inference(self, img_arr: np.ndarray, other_arr: Optional[np.ndarray]) \
+            -> Tuple[Union[float, np.ndarray], ...]:
+        out = self.interpreter.predict(cv2.resize(img_arr, (self.input_shape[1], self.input_shape[0])), img_arr)
+        return self.interpreter_to_output(out)
+
+    def y_translate(self, y: XY) -> Dict[str, Union[float, List[float]]]:
+        assert isinstance(y, tuple), 'Expected tuple'
+        angle, throttle, stop_sign, pedestrian, right_side_car, pedestrian_start, high_resolution_enable, high_resolution_steering = y
+        return {'n_outputs0': angle, 'n_outputs1': throttle, 'stop_sign_stop': stop_sign,
+                'pedestrian_stop': pedestrian, 'right_car_stop': right_side_car, 'pedestrian_start_stop': pedestrian_start,
+                'high_resolution_enable': high_resolution_enable, 'high_resolution_steering': high_resolution_steering}
+
+    def create_model(self):
+        drop = 0.2
+        img_in = Input(shape=self.input_shape, name='img_in')
+        high_resolution_img_in = Input(shape=self.input_shape_high_resolution, name='high_resolution_img_in')
+
+        x = img_in
+
+        cut_stop_sign = img_in
+        cut_pedestrian_start = tf.keras.layers.Cropping2D(cropping=((60, 0), (0, 0)), data_format=None, name="cut_pedestrian_start")(x)
+        cut_pedestrian = tf.keras.layers.Cropping2D(cropping=((60, 0), (0, 0)), data_format=None, name="cut_pedestrian")(x)
+        cut_right_side_car = tf.keras.layers.Cropping2D(cropping=((60, 0), (60, 0)), data_format=None, name="cut_right_side_car")(x)
+        x = tf.keras.layers.Cropping2D(cropping=((40, 0), (0, 0)), data_format=None)(x)
+
+        x = conv2d(24, 5, 2, 1)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(32, 5, 2, 2)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(64, 5, 2, 3)(x)
+        x = Dropout(drop)(x)
+
+        x = conv2d(64, 3, 1, 4)(x)
+        x = Dropout(drop)(x)
+        x = conv2d(64, 3, 1, 5)(x)
+        x = Dropout(drop)(x)
+        x = Flatten(name='flattened')(x)
+
+        x = Dense(100, activation='relu', name='dense_1')(x)
+        x = Dropout(drop)(x)
+        x = Dense(50, activation='relu', name='dense_2')(x)
+        x = Dropout(drop)(x)
+
+        # start stop mechanism stop_sign
+        stop_sign = conv2d(24, 5, 2, "stop_stop_sign_out_1")(cut_stop_sign)
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_1")(stop_sign)
+        stop_sign = conv2d(32, 5, 2, "stop_stop_sign_out_2")(stop_sign)
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_2")(stop_sign)
+        stop_sign = conv2d(64, 5, 2, "stop_stop_sign_out_3")(stop_sign)
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_3")(stop_sign)
+        stop_sign = conv2d(64, 3, 1, "stop_stop_sign_out_4")(stop_sign)
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_4")(stop_sign)
+        stop_sign = conv2d(64, 3, 1, "stop_stop_sign_out_5")(stop_sign)
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_5")(stop_sign)
+        stop_sign = Flatten(name='flattened_stop_stop_sign')(stop_sign)
+
+        stop_sign = Dense(100, activation='relu', name='dense_1_stop_stop_sign_out')(stop_sign)  # 30
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_6")(stop_sign)
+        stop_sign = Dense(50, activation='relu', name='dense_2_stop_stop_sign_out')(stop_sign)  # 8
+        stop_sign = Dropout(drop, name="stop_stop_sign_drop_7")(stop_sign)
+        # finish stop mechanism
+
+        # start stop mechanism pedestrian
+        pedestrian = conv2d(16, 5, 2, "stop_pedestrian_out_1")(cut_pedestrian)
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_1")(pedestrian)
+        pedestrian = conv2d(24, 5, 2, "stop_pedestrian_out_2")(pedestrian)
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_2")(pedestrian)
+        pedestrian = conv2d(32, 3, 2, "stop_pedestrian_out_3")(pedestrian)
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_3")(pedestrian)
+        pedestrian = conv2d(32, 3, 2, "stop_pedestrian_out_4")(pedestrian)
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_4")(pedestrian)
+        pedestrian = Flatten(name='flattened_stop_pedestrian')(pedestrian)
+
+        pedestrian = Dense(100, activation='relu', name='dense_1_stop_pedestrian_out')(pedestrian)  # 30
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_6")(pedestrian)
+        pedestrian = Dense(50, activation='relu', name='dense_2_stop_pedestrian_out')(pedestrian)  # 8
+        pedestrian = Dropout(drop, name="stop_pedestrian_drop_7")(pedestrian)
+        # finish stop mechanism
+
+        # start stop mechanism pedestrian
+        pedestrian_start = conv2d(16, 5, 2, "stop_pedestrian_start_start_out_1")(cut_pedestrian_start)
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_1")(pedestrian_start)
+        pedestrian_start = conv2d(24, 5, 2, "stop_pedestrian_start_out_2")(pedestrian_start)
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_2")(pedestrian_start)
+        pedestrian_start = conv2d(32, 3, 2, "stop_pedestrian_start_out_3")(pedestrian_start)
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_3")(pedestrian_start)
+        pedestrian_start = conv2d(32, 3, 2, "stop_pedestrian_start_out_4")(pedestrian_start)
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_4")(pedestrian_start)
+        pedestrian_start = Flatten(name='flattened_stop_pedestrian_start')(pedestrian_start)
+
+        pedestrian_start = Dense(100, activation='relu', name='dense_1_stop_pedestrian_start_out')(pedestrian_start)  # 30
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_6")(pedestrian_start)
+        pedestrian_start = Dense(50, activation='relu', name='dense_2_stop_pedestrian_start_out')(pedestrian_start)  # 8
+        pedestrian_start = Dropout(drop, name="stop_pedestrian_start_drop_7")(pedestrian_start)
+        # finish stop mechanism
+
+        # start stop mechanism right_side_car
+        right_side_car = conv2d(24, 5, 2, "stop_right_side_car_out_1")(cut_right_side_car)
+        right_side_car = Dropout(drop, name="stop_right_side_car_drop_1")(right_side_car)
+        right_side_car = conv2d(32, 5, 2, "stop_right_side_car_out_2")(right_side_car)
+        right_side_car = Dropout(drop, name="stop_right_side_car_drop_2")(right_side_car)
+        right_side_car = conv2d(64, 3, 2, "stop_right_side_car_out_3")(right_side_car)
+        right_side_car = Dropout(drop, name="stop_right_side_car_drop_3")(right_side_car)
+        right_side_car = Flatten(name='flattened_stop_right_side_car')(right_side_car)
+
+        right_side_car = Dense(100, activation='relu', name='dense_1_stop_right_side_car_out')(right_side_car)  # 30
+        right_side_car = Dropout(drop, name="stop_right_side_car_drop_6")(right_side_car)
+        right_side_car = Dense(50, activation='relu', name='dense_2_stop_right_side_car_out')(right_side_car)  # 8
+        right_side_car = Dropout(drop, name="stop_right_side_car_drop_7")(right_side_car)
+        # finish stop mechanism
+
+        outputs = []
+        for i in range(self.num_outputs):
+            fin_lr = Dense(1, activation='linear', name='n_outputs' + str(i))(x)
+            outputs.append(fin_lr)
+
+        # stop mechanism (final layers)
+        fin_stop_lr = Dense(1, activation='linear', name='stop_sign_stop')(stop_sign)
+        outputs.append(fin_stop_lr)
+        fin_stop_lr = Dense(1, activation='linear', name='pedestrian_stop')(pedestrian)
+        outputs.append(fin_stop_lr)
+        fin_stop_lr = Dense(1, activation='linear', name='right_car_stop')(right_side_car)
+        outputs.append(fin_stop_lr)
+        fin_stop_lr = Dense(1, activation='linear', name='pedestrian_start_stop')(pedestrian_start)
+        outputs.append(fin_stop_lr)
+
+        # start with high resolution
+        high_resolution_x = high_resolution_img_in
+        high_resolution_x = tf.keras.layers.Cropping2D(cropping=((90, 30), (0, 0)), data_format=None)(high_resolution_x)
+
+        high_resolution_x = conv2d(24, 5, 2, "high_resolution_1")(high_resolution_x)
+        high_resolution_x = Dropout(drop, name="high_resolution_drop_1")(high_resolution_x)
+        high_resolution_x = conv2d(32, 5, 2, "high_resolution_2")(high_resolution_x)
+        high_resolution_x = Dropout(drop, name="high_resolution_drop_2")(high_resolution_x)
+        high_resolution_x = conv2d(64, 5, 2, "high_resolution_3")(high_resolution_x)
+        high_resolution_x = Dropout(drop, name="high_resolution_drop_3")(high_resolution_x)
+        high_resolution_x = conv2d(64, 3, 2, "high_resolution_4")(high_resolution_x)
+        high_resolution_x = Dropout(drop, name="high_resolution_drop_4")(high_resolution_x)
+        high_resolution_x = conv2d(64, 3, 1, "high_resolution_5")(high_resolution_x)
+        high_resolution_x = Dropout(drop, name="high_resolution_drop_5")(high_resolution_x)
+        high_resolution_x = Flatten(name='high_resolution_flattened')(high_resolution_x)
+
+        high_resolution_x = Dense(100, activation='relu', name='high_resolution_dense_1')(high_resolution_x)
+        high_resolution_x = Dropout(drop, name="high_resolution_drop_6")(high_resolution_x)
+        high_resolution_x = Dense(50, activation='relu', name='high_resolution_dense_2')(high_resolution_x)
+        high_resolution_x = Dropout(drop, name="high_resolution_drop_7")(high_resolution_x)
+
+        fin_stop_lr = Dense(1, activation='linear', name='high_resolution_steering')(high_resolution_x)
+        outputs.append(fin_stop_lr)
+        fin_stop_lr = Dense(1, activation='linear', name='high_resolution_enable')(high_resolution_x)
+        outputs.append(fin_stop_lr)
+
+        model = Model(inputs=[img_in, high_resolution_img_in], outputs=outputs, name='linear_with_stops_wide_cut_separate_v3_with_high_resolution')
         return model
 
 

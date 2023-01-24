@@ -1,0 +1,10 @@
+{
+  "throttle": 0.85,
+  "throttle_stop": 0,
+  "stop_sign_prob": 0.95,
+  "pedestrian_prob": 0.95,
+  "right_side_car_prob": 0.95,
+  "pedestrian_start_prob": 0.95,
+  "arrow_enable_prob": 0.95,
+  "arrow_throttle": 0.9
+}
